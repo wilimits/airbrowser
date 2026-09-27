@@ -1,0 +1,93 @@
+<Window x:Class="SearchBrowser.WelcomeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Welcome to Air" Height="540" Width="800"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize">
+    
+    <Border Background="#ffffff" CornerRadius="16" BorderBrush="#E5E5E5" BorderThickness="1" Margin="20">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" Opacity="0.15" BlurRadius="25" ShadowDepth="8"/>
+        </Border.Effect>
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Top Logo Area -->
+            <StackPanel Grid.Row="0" Margin="0,40,0,10" HorizontalAlignment="Center">
+                <Border Background="#111827" CornerRadius="24" Width="80" Height="80" Margin="0,0,0,20">
+                    <TextBlock Text="A" Foreground="White" FontSize="42" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="Welcome to Air" FontSize="32" FontWeight="Bold" Foreground="#111827" HorizontalAlignment="Center"/>
+                <TextBlock Text="A browser for Windows with nothing in the way." FontSize="16" Foreground="#6B7280" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- Features -->
+            <Grid Grid.Row="1" Margin="40,20,40,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Margin="15">
+                    <TextBlock Text="🚀" FontSize="36" Margin="0,0,0,15" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Fast &amp; Native" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Built purely for Windows. Opens in a blink and uses almost no memory." FontSize="14" Foreground="#6B7280" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Margin="15">
+                    <TextBlock Text="🛡️" FontSize="36" Margin="0,0,0,15" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Built-in AdBlock" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Blocks ads and trackers at the network level before they even load." FontSize="14" Foreground="#6B7280" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Margin="15">
+                    <TextBlock Text="🔑" FontSize="36" Margin="0,0,0,15" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Smart Passwords" FontSize="16" FontWeight="SemiBold" Foreground="#1F2937" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Import from Chrome. Air automatically fills your logins everywhere." FontSize="14" Foreground="#6B7280" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Bottom Button -->
+            <Border Grid.Row="2" Background="#F9FAFB" CornerRadius="0,0,15,15" Padding="30">
+                <Button Content="Start Browsing" Click="Start_Click" Background="#2563EB" BorderThickness="0" Foreground="White" FontSize="16" FontWeight="SemiBold" Cursor="Hand" Padding="40,14" HorizontalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#1D4ED8"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Border>
+            
+            <Button Content="✕" Click="Close_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="25,25,25,0" Background="Transparent" BorderThickness="0" FontSize="18" Foreground="#9CA3AF" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#111827"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+    </Border>
+</Window>
