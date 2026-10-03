@@ -9,7 +9,7 @@
 </div>
 
 
-<img="https://wilimits.com/assets/uploads/img_6ac124722114f.webp">
+<img src="https://wilimits.com/assets/uploads/img_6ac124722114f.webp" width="100%">
 ---
 
 ## What it is
