@@ -3,9 +3,8 @@
   <p><b>A browser for Windows with nothing in the way.</b></p>
   
   <p>
-    <a href="https://airbrowser.com">Website</a> •
+    <a href="https://wilimits.com/project/airbrowser/">Website</a> •
     <a href="https://github.com/wilimits/airbrowser">GitHub</a> •
-    <a href="#download">Download</a>
   </p>
 </div>
 
