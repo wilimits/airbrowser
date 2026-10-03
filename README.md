@@ -17,10 +17,11 @@
 
 ## What it does
 * **Fast & Native:** Built entirely in C# WPF. Opens in a blink, and uses significantly less memory than traditional Chromium-based behemoths.
+* **Smart Picture-in-Picture (Floating Video):** Leave YouTube or Netflix and the video automatically follows you! Air detects playing videos and seamlessly pops them out into a borderless, always-on-top mini window when you switch tabs.
 * **Built-in Engine:** Leverages the native Windows WebView2 engine. No bloated downloads or duplicate browser binaries.
 * **Smart Passwords:** Export your passwords from Chrome or Edge via CSV. Air securely imports them into an encrypted local profile and uses an intelligent, React-aware autofill engine to seamlessly log you into complex modern web apps.
 * **Network-Level AdBlock:** Ads and trackers are blocked at the network layer before they even start loading. Pages load instantly without heavy scripts.
-* **Minimal Sidebar:** Tabs and bookmarks live on the side, neatly organized and stepping out of your way when you don't need them.
+* **Minimal Sidebar & UI:** Tabs and bookmarks live on the side. Tools like Private Tabs, Bookmarks, and Web Inspector are neatly tucked away in a modern popup Settings menu.
 * **Private Tabs:** True incognito mode right alongside your regular tabs. Private tabs have their own isolated session, cookies, and leave no trace in history.
 * **Web Inspector:** Chromium's powerful developer tools are still right at your fingertips when you need them.
 
@@ -62,3 +63,4 @@ dotnet run
 
 ## License
 MIT License. See [LICENSE](LICENSE) for more information.
+
