@@ -4,7 +4,7 @@
   
   <p>
     <a href="https://wilimits.com/project/airbrowser/">Website</a> •
-    <a href="https://github.com/wilimits/airbrowser">GitHub</a> •
+    <a href="https://github.com/wilimits/airbrowser">GitHub</a>
   </p>
 </div>
 
