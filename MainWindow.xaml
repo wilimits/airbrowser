@@ -11,6 +11,28 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <Style x:Key="MenuButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F5F5F5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="SidebarListBoxItem" TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Padding" Value="10,6"/>
@@ -202,32 +224,11 @@
                     </StackPanel>
                 </Button>
 
-                <!-- New Private Tab Button -->
-                <Button Grid.Row="4" Margin="15,0,15,5" Padding="5" Background="Transparent" BorderThickness="0" 
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="NewPrivateTabBtn_Click" Foreground="#999" ToolTip="New private tab">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="3,0,10,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="New private tab" FontSize="13" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                
 
-                <!-- Import Bookmarks Button -->
-                <Button Grid.Row="5" Margin="15,5,15,5" Padding="5" Background="Transparent" BorderThickness="0" 
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="ImportBookmarks_Click" Foreground="#999" ToolTip="Import bookmarks from Chrome/Edge">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="3,0,10,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Import bookmarks" FontSize="13" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                
 
-                <!-- Import Passwords Button -->
-                <Button Grid.Row="6" Margin="15,0,15,20" Padding="5" Background="Transparent" BorderThickness="0" 
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="ImportPasswords_Click" Foreground="#999" ToolTip="Import passwords from Chrome">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE8D7;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="3,0,10,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Import passwords" FontSize="13" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                
             </Grid>
         </Border>
 
@@ -277,7 +278,42 @@
                     </Border>
 
                     <Button x:Name="ReaderBtn" Grid.Column="5" Content="&#xE736;" FontFamily="Segoe MDL2 Assets" Width="32" Height="32" Margin="5,0,0,0" Background="Transparent" BorderThickness="0" ToolTip="Reading Mode" Click="ReaderBtn_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button x:Name="DevToolsBtn" Grid.Column="6" Content="&#xE9D9;" FontFamily="Segoe MDL2 Assets" Width="32" Height="32" Margin="0,0,0,0" Background="Transparent" BorderThickness="0" ToolTip="Web Inspector" Click="DevToolsBtn_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                                            <Button x:Name="SettingsBtn" Grid.Column="6" Content="&#xE713;" FontFamily="Segoe MDL2 Assets" Width="32" Height="32" Margin="0,0,0,0" Background="Transparent" BorderThickness="0" ToolTip="Settings" Click="SettingsBtn_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    
+                    <Popup x:Name="SettingsPopup" PlacementTarget="{Binding ElementName=SettingsBtn}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" HorizontalOffset="-170" VerticalOffset="10">
+                        <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Margin="0,0,15,15">
+                            <Border.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="15" Opacity="0.1" ShadowDepth="4" />
+                            </Border.Effect>
+                            <StackPanel Width="220" Margin="5,5">
+                                <Button Style="{StaticResource MenuButtonStyle}" Click="NewPrivateTabBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" Margin="5,0,15,0" VerticalAlignment="Center" FontSize="14" Foreground="#888"/>
+                                        <TextBlock Text="New private tab" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource MenuButtonStyle}" Click="ImportBookmarks_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Margin="5,0,15,0" VerticalAlignment="Center" FontSize="14" Foreground="#888"/>
+                                        <TextBlock Text="Import bookmarks" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource MenuButtonStyle}" Click="ImportPasswords_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8D7;" FontFamily="Segoe MDL2 Assets" Margin="5,0,15,0" VerticalAlignment="Center" FontSize="14" Foreground="#888"/>
+                                        <TextBlock Text="Import passwords" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Rectangle Height="1" Fill="#EEEEEE" Margin="15,5"/>
+                                <Button Style="{StaticResource MenuButtonStyle}" Click="DevToolsBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" Margin="5,0,15,0" VerticalAlignment="Center" FontSize="14" Foreground="#888"/>
+                                        <TextBlock Text="Web Inspector" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                 </Grid>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
@@ -293,3 +329,7 @@
         </Grid>
     </Grid>
 </Window>
+
+
+
+

@@ -172,6 +172,7 @@ namespace SearchBrowser
 
         private void ImportBookmarks_Click(object sender, RoutedEventArgs e)
         {
+            CloseSettingsPopup();
             int chromeCount = ImportFromBrowser(@"Google\Chrome\User Data\Default");
             int edgeCount = ImportFromBrowser(@"Microsoft\Edge\User Data\Default");
             
@@ -192,6 +193,7 @@ namespace SearchBrowser
 
         private void ImportPasswords_Click(object sender, RoutedEventArgs e)
         {
+            CloseSettingsPopup();
             var instructionDialog = new ImportDialog();
             instructionDialog.Owner = this;
             
@@ -289,7 +291,7 @@ namespace SearchBrowser
             return added;
         }
 
-        private void MainWindow_StateChanged(object sender, EventArgs e)
+                private void MainWindow_StateChanged(object sender, EventArgs e)
         {
             if (this.WindowState == WindowState.Maximized)
             {
@@ -298,6 +300,15 @@ namespace SearchBrowser
             else
             {
                 RootLayout.Margin = new Thickness(0);
+            }
+            
+            if (this.WindowState == WindowState.Minimized && _currentTab != null)
+            {
+                CheckAndPopOutVideo(_currentTab);
+            }
+            else if (this.WindowState != WindowState.Minimized && _poppedOutTab != null && _poppedOutTab == _currentTab && _miniWindow != null)
+            {
+                _miniWindow.Close();
             }
         }
 
@@ -309,17 +320,16 @@ namespace SearchBrowser
             "pagead2", "ads.twitter.com", "analytics", "tracking", "pixel"
         };
 
-        private async void AddNewTab(string url, bool isPrivate = false)
+        private async System.Threading.Tasks.Task<WebView2> AddNewTab(string url, bool isPrivate = false)
         {
             var webView = new WebView2();
-            if (isPrivate)
+            var userData = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AirBrowser", "WebView2Data");
+            webView.CreationProperties = new CoreWebView2CreationProperties
             {
-                webView.CreationProperties = new CoreWebView2CreationProperties
-                {
-                    IsInPrivateModeEnabled = true,
-                    ProfileName = "PrivateSession"
-                };
-            }
+                UserDataFolder = userData,
+                IsInPrivateModeEnabled = isPrivate,
+                ProfileName = isPrivate ? "PrivateSession" : null
+            };
 
             WebViewsContainer.Children.Add(webView);
             
@@ -329,6 +339,19 @@ namespace SearchBrowser
                 {
                     webView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = true;
                     webView.CoreWebView2.Settings.IsGeneralAutofillEnabled = true;
+
+                    // Handle target="_blank" links
+                    webView.CoreWebView2.NewWindowRequested += async (sender, args) =>
+                    {
+                        var deferral = args.GetDeferral();
+                        args.Handled = true;
+                        var newWebView = await AddNewTab(args.Uri, isPrivate);
+                        if (newWebView?.CoreWebView2 != null)
+                        {
+                            args.NewWindow = newWebView.CoreWebView2;
+                        }
+                        deferral.Complete();
+                    };
 
                     // Network-level AdBlock
                     webView.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
@@ -424,18 +447,89 @@ namespace SearchBrowser
 
             Tabs.Add(newTab);
             
-            webView.Source = new Uri(url);
+            if (!string.IsNullOrEmpty(url))
+            {
+                webView.Source = new Uri(url);
+            }
+            
             TabsList.SelectedItem = newTab;
+            return webView;
         }
 
-        private void TabsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+                public BrowserTab _poppedOutTab = null;
+        public MiniWindow _miniWindow = null;
+
+        public void PopOutTab(BrowserTab tab)
         {
+            if (_poppedOutTab != null) return;
+            _poppedOutTab = tab;
+            _miniWindow = new MiniWindow(this, tab);
+            _miniWindow.Show();
+        }
+
+        public void ReturnFromMiniWindow(BrowserTab tab)
+        {
+            _poppedOutTab = null;
+            _miniWindow = null;
+            if (!WebViewsContainer.Children.Contains(tab.WebView))
+            {
+                WebViewsContainer.Children.Add(tab.WebView);
+            }
+            tab.WebView.Visibility = (_currentTab == tab) ? Visibility.Visible : Visibility.Hidden;
+        }
+        
+        private void CheckAndPopOutVideo(BrowserTab tabToPop)
+        {
+            if (tabToPop == null || tabToPop.WebView?.CoreWebView2 == null) return;
+            
+            try
+            {
+                string host = new Uri(tabToPop.Url ?? "").Host.ToLower();
+                if (host.Contains("youtube.com") || host.Contains("netflix.com"))
+                {
+                    tabToPop.WebView.ExecuteScriptAsync(
+                        "Array.from(document.querySelectorAll('video')).some(v => !v.paused && !v.ended && v.readyState > 2)"
+                    ).ContinueWith(t => {
+                        if (t.Result == "true")
+                        {
+                            Dispatcher.Invoke(() => {
+                                if (_poppedOutTab == null && _currentTab != tabToPop) 
+                                {
+                                    PopOutTab(tabToPop);
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+            catch { }
+        }
+
+                private void TabsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.RemovedItems.Count > 0 && e.RemovedItems[0] is BrowserTab oldTab)
+            {
+                if (Tabs.Contains(oldTab))
+                {
+                    CheckAndPopOutVideo(oldTab);
+                }
+            }
+
             if (TabsList.SelectedItem is BrowserTab selectedTab)
             {
                 _currentTab = selectedTab;
-                foreach (WebView2 wv in WebViewsContainer.Children)
+                
+                if (_poppedOutTab == selectedTab && _miniWindow != null)
                 {
-                    wv.Visibility = (wv == selectedTab.WebView) ? Visibility.Visible : Visibility.Hidden;
+                    _miniWindow.Close();
+                }
+
+                foreach (UIElement child in WebViewsContainer.Children)
+                {
+                    if (child is WebView2 wv)
+                    {
+                        wv.Visibility = (wv == selectedTab.WebView) ? Visibility.Visible : Visibility.Hidden;
+                    }
                 }
                 UrlTextBox.Text = selectedTab.WebView.Source?.ToString() ?? selectedTab.Url;
             }
@@ -455,11 +549,21 @@ namespace SearchBrowser
         }
 
         private void NewTabBtn_Click(object sender, RoutedEventArgs e) => AddNewTab("https://www.google.com");
-        private void NewPrivateTabBtn_Click(object sender, RoutedEventArgs e) => AddNewTab("https://www.google.com", true);
+        private void NewPrivateTabBtn_Click(object sender, RoutedEventArgs e) { CloseSettingsPopup(); AddNewTab("https://www.google.com", true); }
 
         private void ToggleSidebarBtn_Click(object sender, RoutedEventArgs e)
         {
             SidebarColumn.Width = SidebarColumn.Width.Value == 0 ? new GridLength(240) : new GridLength(0);
+        }
+
+                private void SettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsPopup.IsOpen = !SettingsPopup.IsOpen;
+        }
+
+        private void CloseSettingsPopup()
+        {
+            SettingsPopup.IsOpen = false;
         }
 
         // Titlebar Buttons
@@ -507,6 +611,7 @@ namespace SearchBrowser
 
         private void DevToolsBtn_Click(object sender, RoutedEventArgs e)
         {
+            CloseSettingsPopup();
             if (_currentTab?.WebView != null)
             {
                 _currentTab.WebView.CoreWebView2.OpenDevToolsWindow();
@@ -514,3 +619,12 @@ namespace SearchBrowser
         }
     }
 }
+
+
+
+
+
+
+
+
+
