@@ -16,6 +16,7 @@ namespace SearchBrowser
     public class BrowserTab : INotifyPropertyChanged
     {
         public bool IsPrivate { get; set; }
+        public string Space { get; set; } = "Personal";
         private string _title = "Loading...";
         private string _faviconUri = "";
         
@@ -51,12 +52,18 @@ namespace SearchBrowser
     {
         public ObservableCollection<BrowserTab> Tabs { get; set; } = new ObservableCollection<BrowserTab>();
         public ObservableCollection<Bookmark> Bookmarks { get; set; } = new ObservableCollection<Bookmark>();
+        public ICollectionView TabsView { get; set; }
+        private string _currentSpace = "Personal";
         private BrowserTab _currentTab;
+        private bool _isSplitView = false;
+        private BrowserTab _splitTab;
 
         public MainWindow()
         {
             InitializeComponent();
-            TabsList.ItemsSource = Tabs;
+            TabsView = System.Windows.Data.CollectionViewSource.GetDefaultView(Tabs);
+            TabsView.Filter = item => (item is BrowserTab tab) && tab.Space == _currentSpace;
+            TabsList.ItemsSource = TabsView;
             BookmarksList.ItemsSource = Bookmarks;
 
             this.StateChanged += MainWindow_StateChanged;
@@ -82,7 +89,7 @@ namespace SearchBrowser
                 
                 File.WriteAllText(Path.Combine(dir, "bookmarks.json"), JsonSerializer.Serialize(Bookmarks, options));
                 
-                var tabsData = Tabs.Where(t => !t.IsPrivate).Select(t => new { t.Title, t.Url }).ToList();
+                var tabsData = Tabs.Where(t => !t.IsPrivate).Select(t => new { t.Title, t.Url, t.Space }).ToList();
                 File.WriteAllText(Path.Combine(dir, "tabs.json"), JsonSerializer.Serialize(tabsData, options));
             }
             catch { }
@@ -118,15 +125,18 @@ namespace SearchBrowser
                     foreach (JsonElement el in doc.RootElement.EnumerateArray())
                     {
                         string url = el.TryGetProperty("Url", out var u) ? u.GetString() : "";
+                        string space = el.TryGetProperty("Space", out var s) ? s.GetString() : "Personal";
+                        if (string.IsNullOrEmpty(space)) space = "Personal";
+
                         if (!string.IsNullOrEmpty(url)) 
                         {
-                            AddNewTab(url);
+                            AddNewTab(url, false, space);
                             loadedAny = true;
                         }
                     }
                 }
                 
-                if (!loadedAny) AddNewTab("https://www.google.com");
+                if (!loadedAny) AddNewTab("https://www.google.com", false, "Personal");
             }
             catch 
             {
@@ -320,7 +330,7 @@ namespace SearchBrowser
             "pagead2", "ads.twitter.com", "analytics", "tracking", "pixel"
         };
 
-        private async System.Threading.Tasks.Task<WebView2> AddNewTab(string url, bool isPrivate = false)
+        private async System.Threading.Tasks.Task<WebView2> AddNewTab(string url, bool isPrivate = false, string space = null)
         {
             var webView = new WebView2();
             var userData = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AirBrowser", "WebView2Data");
@@ -331,6 +341,8 @@ namespace SearchBrowser
                 ProfileName = isPrivate ? "PrivateSession" : null
             };
 
+            Grid.SetColumn(webView, 0);
+            Grid.SetColumnSpan(webView, 3);
             WebViewsContainer.Children.Add(webView);
             
             webView.CoreWebView2InitializationCompleted += (s, e) =>
@@ -387,8 +399,8 @@ namespace SearchBrowser
                         if (Tabs.FirstOrDefault(t => t.WebView == webView) is BrowserTab tab)
                         {
                             tab.Url = webView.Source?.ToString() ?? tab.Url;
-                            if (_currentTab == tab)
-                                UrlTextBox.Text = webView.Source?.ToString();
+                            if (_currentTab == tab && !UrlTextBox.IsFocused)
+                                UrlTextBox.Text = FormatDisplayUrl(webView.Source?.ToString());
                         }
 
                         // Autofill injected passwords
@@ -441,18 +453,23 @@ namespace SearchBrowser
             
             await webView.EnsureCoreWebView2Async(null);
             
-            var newTab = new BrowserTab { Url = url, WebView = webView, IsPrivate = isPrivate };
+            space = space ?? _currentSpace;
+            var newTab = new BrowserTab { Url = url, WebView = webView, IsPrivate = isPrivate, Space = space };
             if (isPrivate) newTab.Title = "Private Tab";
             newTab.FaviconUri = "pack://application:,,,/SearchBrowser;component/default_favicon.png";
 
             Tabs.Add(newTab);
+            TabsView?.Refresh();
             
             if (!string.IsNullOrEmpty(url))
             {
                 webView.Source = new Uri(url);
             }
             
-            TabsList.SelectedItem = newTab;
+            if (newTab.Space == _currentSpace)
+            {
+                TabsList.SelectedItem = newTab;
+            }
             return webView;
         }
 
@@ -517,21 +534,35 @@ namespace SearchBrowser
 
             if (TabsList.SelectedItem is BrowserTab selectedTab)
             {
-                _currentTab = selectedTab;
-                
+                if (_isSplitView && _splitTab != null)
+                {
+                    if (selectedTab != _splitTab)
+                    {
+                        _currentTab = selectedTab;
+                    }
+                    EnableSplitView();
+                }
+                else
+                {
+                    _currentTab = selectedTab;
+                    foreach (UIElement child in WebViewsContainer.Children)
+                    {
+                        if (child is WebView2 wv)
+                        {
+                            wv.Visibility = (wv == selectedTab.WebView) ? Visibility.Visible : Visibility.Hidden;
+                        }
+                    }
+                }
+
                 if (_poppedOutTab == selectedTab && _miniWindow != null)
                 {
                     _miniWindow.Close();
                 }
 
-                foreach (UIElement child in WebViewsContainer.Children)
+                if (!UrlTextBox.IsFocused)
                 {
-                    if (child is WebView2 wv)
-                    {
-                        wv.Visibility = (wv == selectedTab.WebView) ? Visibility.Visible : Visibility.Hidden;
-                    }
+                    UrlTextBox.Text = FormatDisplayUrl(selectedTab.WebView.Source?.ToString() ?? selectedTab.Url);
                 }
-                UrlTextBox.Text = selectedTab.WebView.Source?.ToString() ?? selectedTab.Url;
             }
         }
 
@@ -539,12 +570,148 @@ namespace SearchBrowser
         {
             if ((sender as Button)?.DataContext is BrowserTab tab)
             {
+                if (_isSplitView && (tab == _currentTab || tab == _splitTab))
+                {
+                    DisableSplitView();
+                    SplitBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x55, 0x55, 0x55));
+                }
+
                 WebViewsContainer.Children.Remove(tab.WebView);
                 tab.WebView.Dispose();
                 Tabs.Remove(tab);
+                TabsView?.Refresh();
 
-                if (Tabs.Count == 0)
-                    Close(); // Close app if last tab is closed
+                var remainingSpaceTabs = Tabs.Where(t => t.Space == _currentSpace).ToList();
+                if (remainingSpaceTabs.Count > 0)
+                {
+                    if (TabsList.SelectedItem == null) TabsList.SelectedItem = remainingSpaceTabs.Last();
+                }
+                else if (Tabs.Count == 0)
+                {
+                    Close(); // Close app if last tab across all spaces is closed
+                }
+                else
+                {
+                    AddNewTab("https://www.google.com", false, _currentSpace);
+                }
+            }
+        }
+
+        private async void SplitBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _isSplitView = !_isSplitView;
+            if (_isSplitView)
+            {
+                SplitBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x3B, 0x82, 0xF6));
+
+                // Find another tab in the same space to split with
+                var otherTab = Tabs.FirstOrDefault(t => t != _currentTab && t.Space == _currentSpace);
+                if (otherTab == null)
+                {
+                    await AddNewTab("https://www.google.com", false, _currentSpace);
+                    otherTab = Tabs.FirstOrDefault(t => t != _currentTab && t.Space == _currentSpace);
+                }
+                _splitTab = otherTab;
+                EnableSplitView();
+            }
+            else
+            {
+                SplitBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x55, 0x55, 0x55));
+                DisableSplitView();
+            }
+        }
+
+        private void EnableSplitView()
+        {
+            if (_currentTab == null || _splitTab == null) return;
+
+            LeftCol.Width = new GridLength(1, GridUnitType.Star);
+            SplitterCol.Width = new GridLength(5);
+            RightCol.Width = new GridLength(1, GridUnitType.Star);
+            ViewSplitter.Visibility = Visibility.Visible;
+
+            foreach (UIElement child in WebViewsContainer.Children)
+            {
+                if (child is WebView2 wv)
+                {
+                    if (wv == _currentTab.WebView)
+                    {
+                        Grid.SetColumn(wv, 0);
+                        Grid.SetColumnSpan(wv, 1);
+                        wv.Visibility = Visibility.Visible;
+                    }
+                    else if (wv == _splitTab.WebView)
+                    {
+                        Grid.SetColumn(wv, 2);
+                        Grid.SetColumnSpan(wv, 1);
+                        wv.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        wv.Visibility = Visibility.Hidden;
+                    }
+                }
+            }
+        }
+
+        private void DisableSplitView()
+        {
+            _isSplitView = false;
+            LeftCol.Width = new GridLength(1, GridUnitType.Star);
+            SplitterCol.Width = new GridLength(0);
+            RightCol.Width = new GridLength(0);
+            ViewSplitter.Visibility = Visibility.Collapsed;
+
+            foreach (UIElement child in WebViewsContainer.Children)
+            {
+                if (child is WebView2 wv)
+                {
+                    Grid.SetColumn(wv, 0);
+                    Grid.SetColumnSpan(wv, 3);
+                    wv.Visibility = (wv == _currentTab?.WebView) ? Visibility.Visible : Visibility.Hidden;
+                }
+            }
+            _splitTab = null;
+        }
+
+        private void SpacePersonalBtn_Click(object sender, RoutedEventArgs e) => SwitchSpace("Personal");
+        private void SpaceWorkBtn_Click(object sender, RoutedEventArgs e) => SwitchSpace("Work");
+
+        private void SwitchSpace(string spaceName)
+        {
+            if (_currentSpace == spaceName) return;
+            if (_isSplitView)
+            {
+                DisableSplitView();
+                SplitBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x55, 0x55, 0x55));
+            }
+            _currentSpace = spaceName;
+
+            if (spaceName == "Personal")
+            {
+                SpacePersonalBtn.Background = System.Windows.Media.Brushes.White;
+                SpacePersonalBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x11, 0x11, 0x11));
+                SpaceWorkBtn.Background = System.Windows.Media.Brushes.Transparent;
+                SpaceWorkBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x66, 0x66, 0x66));
+            }
+            else
+            {
+                SpaceWorkBtn.Background = System.Windows.Media.Brushes.White;
+                SpaceWorkBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x11, 0x11, 0x11));
+                SpacePersonalBtn.Background = System.Windows.Media.Brushes.Transparent;
+                SpacePersonalBtn.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x66, 0x66, 0x66));
+            }
+
+            TabsView?.Refresh();
+
+            var spaceTabs = Tabs.Where(t => t.Space == _currentSpace).ToList();
+            if (spaceTabs.Count > 0)
+            {
+                TabsList.SelectedItem = spaceTabs.Last();
+            }
+            else
+            {
+                AddNewTab("https://www.google.com", false, _currentSpace);
             }
         }
 
@@ -580,14 +747,42 @@ namespace SearchBrowser
         {
             if (e.Key == Key.Enter && _currentTab != null)
             {
-                string url = UrlTextBox.Text;
+                string url = UrlTextBox.Text.Trim();
                 if (!url.StartsWith("http://") && !url.StartsWith("https://"))
                 {
                     if (url.Contains(".") && !url.Contains(" ")) url = "https://" + url;
                     else url = "https://www.google.com/search?q=" + Uri.EscapeDataString(url);
                 }
                 _currentTab.WebView.Source = new Uri(url);
+                Keyboard.ClearFocus();
             }
+        }
+
+        private string FormatDisplayUrl(string rawUrl)
+        {
+            if (string.IsNullOrWhiteSpace(rawUrl)) return "";
+            try
+            {
+                var uri = new Uri(rawUrl);
+                string host = uri.Host;
+                if (host.StartsWith("www.")) host = host.Substring(4);
+                return host;
+            }
+            catch
+            {
+                return rawUrl;
+            }
+        }
+
+        private void UrlTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            UrlTextBox.Text = _currentTab?.WebView?.Source?.ToString() ?? _currentTab?.Url ?? "";
+            UrlTextBox.SelectAll();
+        }
+
+        private void UrlTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UrlTextBox.Text = FormatDisplayUrl(_currentTab?.WebView?.Source?.ToString() ?? _currentTab?.Url ?? "");
         }
 
         private async void ReaderBtn_Click(object sender, RoutedEventArgs e)

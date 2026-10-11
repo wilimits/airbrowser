@@ -1,6 +1,6 @@
 [Setup]
 AppName=Air Browser
-AppVersion=1.0.0
+AppVersion=1.1.6
 DefaultDirName={autopf}\AirBrowser
 DefaultGroupName=Air Browser
 UninstallDisplayIcon={app}\SearchBrowser.exe
